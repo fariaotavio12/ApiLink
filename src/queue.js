@@ -171,6 +171,8 @@ export class TaskQueue {
 			errorSnippet: String(e?.errorSnippet ?? e),
 			attempts: attempts + 1,
 		});
+
+		console.log(e);
 		t.failedCount++;
 
 		if (t.doneCount + t.failedCount >= t.repeat) {
