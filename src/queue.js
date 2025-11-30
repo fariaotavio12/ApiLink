@@ -172,7 +172,15 @@ export class TaskQueue {
 			attempts: attempts + 1,
 		});
 
-		console.log(e);
+		// log completo no servidor
+		console.error("[TaskQueue] run error", {
+			taskId: t.id,
+			url: t.url,
+			runIndex,
+			attempts: attempts + 1,
+			error: errObj,
+		});
+
 		t.failedCount++;
 
 		if (t.doneCount + t.failedCount >= t.repeat) {
