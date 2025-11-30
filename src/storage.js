@@ -1,30 +1,46 @@
-import fs from 'node:fs';
-import path from 'node:path';
-
-const DATA_DIR = path.resolve('data');
-const STATE_FILE = path.join(DATA_DIR, 'state.json');
+// state.js
+const tasksMap = new Map();
 
 export const state = { tasks: {} };
 
-export function ensureDataDirs() {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-  const shots = path.join(DATA_DIR, 'screenshots');
-  if (!fs.existsSync(shots)) fs.mkdirSync(shots, { recursive: true });
+// ttlMs opcional (em ms). Ex: 10min = 10 * 60 * 1000
+export function setTask(id, value, ttlMs) {
+	tasksMap.set(id, {
+		value,
+		expiresAt: ttlMs ? Date.now() + ttlMs : undefined,
+	});
+	state.tasks[id] = value; // compat
 }
 
-export function saveStateSync() {
-  ensureDataDirs();
-  fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
+export function getTask(id) {
+	const entry = tasksMap.get(id);
+	if (!entry) return undefined;
+
+	if (entry.expiresAt && entry.expiresAt < Date.now()) {
+		tasksMap.delete(id);
+		delete state.tasks[id];
+		return undefined;
+	}
+	return entry.value;
 }
 
-export function loadStateIfAny() {
-  ensureDataDirs();
-  if (fs.existsSync(STATE_FILE)) {
-    try {
-      const json = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
-      Object.assign(state.tasks, json.tasks || {});
-    } catch (e) {
-      console.warn('Falha lendo state.json:', e);
-    }
-  }
+export function removeTask(id) {
+	tasksMap.delete(id);
+	delete state.tasks[id];
 }
+
+export function listTasks() {
+	// limpa expiradas
+	for (const [id, entry] of tasksMap.entries()) {
+		if (entry.expiresAt && entry.expiresAt < Date.now()) {
+			tasksMap.delete(id);
+			delete state.tasks[id];
+		}
+	}
+	return state.tasks;
+}
+
+// Mantém interface antiga
+export function ensureDataDirs() {}
+export function saveStateSync() {}
+export function loadStateIfAny() {}
