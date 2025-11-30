@@ -172,6 +172,21 @@ export class TaskQueue {
 			attempts: attempts + 1,
 		});
 
+		const errObj = {
+			n: runIndex,
+			startedAt: e?.startedAt ?? Date.now(),
+			endedAt: e?.endedAt ?? Date.now(),
+			status: "error",
+			errorSnippet: String(e?.errorSnippet ?? e?.message ?? e),
+			attempts: attempts + 1,
+			// extra info útil:
+			name: e?.name,
+			message: e?.message,
+			stack: e?.stack,
+			code: e?.code,
+			cause: e?.cause,
+		};
+
 		// log completo no servidor
 		console.error("[TaskQueue] run error", {
 			taskId: t.id,
