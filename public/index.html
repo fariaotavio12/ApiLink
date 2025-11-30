@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Tester API – Puppeteer Queue</title>
+		<style>
+			:root {
+				--bg: #0b1020;
+				--card: #131a2b;
+				--muted: #9bb0d8;
+				--text: #e8eeff;
+				--accent: #7aa2ff;
+				--ok: #35c46a;
+				--err: #ff5c7a;
+			}
+			html,
+			body {
+				height: 100%;
+			}
+			body {
+				margin: 0;
+				font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Arial, sans-serif;
+				background: linear-gradient(180deg, #0b1020, #0f1830);
+				color: var(--text);
+			}
+			.wrap {
+				max-width: 980px;
+				margin: 24px auto;
+				padding: 0 16px;
+			}
+			.card {
+				background: var(--card);
+				border: 1px solid #223154;
+				border-radius: 16px;
+				box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+			}
+			h1 {
+				font-size: 24px;
+				margin: 0 0 8px;
+			}
+			p.sub {
+				color: var(--muted);
+				margin: 0 0 16px;
+			}
+			.section {
+				padding: 16px 18px;
+			}
+			label {
+				display: block;
+				font-weight: 600;
+				margin-bottom: 6px;
+			}
+			input,
+			select {
+				width: 100%;
+				padding: 10px 12px;
+				border-radius: 10px;
+				border: 1px solid #2a3a5f;
+				background: #0e1526;
+				color: var(--text);
+			}
+			.row {
+				display: flex;
+				gap: 12px;
+				align-items: center;
+			}
+			button {
+				border: 0;
+				padding: 10px 14px;
+				border-radius: 10px;
+				font-weight: 700;
+				cursor: pointer;
+				background: #223154;
+				color: #d9e6ff;
+			}
+			button.primary {
+				background: var(--accent);
+				color: #081225;
+			}
+			button.ghost {
+				background: transparent;
+				border: 1px solid #2a3a5f;
+			}
+			table {
+				width: 100%;
+				border-collapse: collapse;
+			}
+			th,
+			td {
+				padding: 10px;
+				border-bottom: 1px solid #263658;
+				font-size: 14px;
+			}
+			th {
+				color: #bcd0f2;
+				text-align: left;
+			}
+			.muted {
+				color: var(--muted);
+			}
+			.small {
+				font-size: 12px;
+			}
+			.status-running {
+				color: #ffe384;
+			}
+			.status-done {
+				color: var(--ok);
+				font-weight: 700;
+			}
+			.status-failed {
+				color: var(--err);
+				font-weight: 700;
+			}
+			.status-queued {
+				color: #bcd0f2;
+			}
+			.status-paused {
+				color: #98a6c0;
+			}
+			.status-canceled {
+				color: #ffb0c0;
+			}
+			.toolbar {
+				display: flex;
+				gap: 8px;
+				flex-wrap: wrap;
+			}
+			.toast {
+				position: fixed;
+				right: 16px;
+				bottom: 16px;
+				background: #131a2b;
+				border: 1px solid #223154;
+				padding: 10px 12px;
+				border-radius: 10px;
+				display: none;
+			}
+			.toast.show {
+				display: block;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="wrap">
+			<div class="card">
+				<div class="section">
+					<h1>Tester – Puppeteer Queue API</h1>
+					<p class="sub">Se abrir via <code>file://</code> e der CORS, sirva este HTML pelo mesmo servidor Express.</p>
+					<div class="row" style="gap: 8px; margin-bottom: 10px">
+						<label for="base" class="small muted" style="min-width: 110px">Base URL</label>
+						<input id="base" value="http://localhost:3000" />
+						<button type="button" class="ghost" id="btnHealth">/health</button>
+						<span id="health" class="small muted" aria-live="polite"></span>
+					</div>
+				</div>
+
+				<div class="section">
+					<h2 style="margin: 0 0 12px">Criar tarefa</h2>
+					<div class="row" style="margin-bottom: 10px">
+						<div style="flex: 1">
+							<label for="url">URL</label>
+							<input id="url" placeholder="https://example.org" value="https://example.org" />
+						</div>
+					</div>
+					<div class="row" style="margin-bottom: 10px">
+						<div style="flex: 1">
+							<label for="repeat">Repetições</label>
+							<input id="repeat" type="number" min="1" step="1" value="3" />
+						</div>
+						<div style="flex: 1">
+							<label for="interval">Intervalo (ms)</label>
+							<input id="interval" type="number" min="100" step="100" value="1000" />
+						</div>
+						<div style="flex: 1">
+							<label for="timeout">Timeout (ms)</label>
+							<input id="timeout" type="number" min="1000" step="500" value="30000" />
+						</div>
+					</div>
+					<div class="row" style="margin-bottom: 10px">
+						<div style="flex: 1">
+							<label for="ua">User-Agent (opcional)</label>
+							<input id="ua" placeholder="MyBot/1.0" />
+						</div>
+						<div style="flex: 1">
+							<label for="wait">WaitUntil</label>
+							<select id="wait">
+								<option value="networkidle2" selected>networkidle2</option>
+								<option value="load">load</option>
+								<option value="domcontentloaded">domcontentloaded</option>
+								<option value="networkidle0">networkidle0</option>
+							</select>
+						</div>
+						<div style="flex: 0 0 auto; display: flex; align-items: center; gap: 10px; margin-top: 22px">
+							<label for="shot" class="small muted">Screenshot?</label>
+							<input id="shot" type="checkbox" aria-label="Fazer screenshot" />
+						</div>
+					</div>
+					<div class="row" style="justify-content: flex-end">
+						<button type="button" class="ghost" id="btnReload">Atualizar lista</button>
+						<button type="button" class="primary" id="btnCreate">Criar</button>
+					</div>
+				</div>
+
+				<div class="section">
+					<h2 style="margin: 0 0 12px">Tarefas</h2>
+					<div class="toolbar" style="margin-bottom: 8px">
+						<button type="button" id="btnAutoOn">Auto-refresh</button>
+						<button type="button" class="ghost" id="btnAutoOff">Parar</button>
+						<span class="small muted">Atualiza sem recarregar a página</span>
+					</div>
+					<div style="overflow: auto">
+						<table aria-label="Tabela de tarefas">
+							<thead>
+								<tr>
+									<th>ID</th>
+									<th>URL</th>
+									<th>Status</th>
+									<th>Progresso</th>
+									<th>Próxima</th>
+									<th>Ações</th>
+								</tr>
+							</thead>
+							<tbody id="tbody"></tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+		<script>
+			(function(){
+			  "use strict";
+
+			  var autoTimer = null;
+			  var cache = Object.create(null); // id -> task (para diff)
+			  var inflight = false;
+
+			  function apiBase(){
+			    var v = document.getElementById("base").value || "";
+			    return v.trim().replace(/\\/$,"");
+			  }
+
+			  function setText(id, text){
+			    var el = document.getElementById(id);
+			    if (el) el.textContent = text;
+			  }
+
+			  function toast(msg){
+			    var t = document.getElementById("toast");
+			    t.textContent = msg;
+			    t.classList.add("show");
+			    clearTimeout(t._timer);
+			    t._timer = setTimeout(function(){ t.classList.remove("show"); }, 2500);
+			  }
+
+			  async function tryFetch(url, opts){
+			    const r = await fetch(url, opts);
+			    const ct = r.headers.get("content-type") || "";
+			    const body = ct.includes("application/json") ? await r.json() : await r.text();
+			    if (!r.ok) throw new Error(typeof body === "string" ? body : JSON.stringify(body));
+			    return body;
+			  }
+
+			  function fmtStatus(s){
+			    return '<span class="status-' + s + '">' + s + '</span>';
+			  }
+			  function fmtTime(ts){
+			    if (!ts) return "-";
+			    return new Date(ts).toLocaleTimeString();
+			  }
+			  function progressRow(t){
+			    return t.doneCount + "/" + t.repeat + " (" + t.failedCount + " falhas)";
+			  }
+
+			  function renderRow(t){
+			    var tr = document.getElementById("row-" + t.id);
+			    var html =
+			      '<td><code>'+t.id+'</code></td>' +
+			      '<td class="small">'+t.url+'</td>' +
+			      '<td>'+fmtStatus(t.status)+'</td>' +
+			      '<td>'+progressRow(t)+'</td>' +
+			      '<td class="small muted">'+fmtTime(t.nextRunAt)+'</td>' +
+			      '<td class="small">' +
+			        '<div class="toolbar">' +
+			          '<button type="button" data-action="view" data-id="'+t.id+'">Ver</button>' +
+			          '<button type="button" data-action="pause" data-id="'+t.id+'">Pausar</button>' +
+			          '<button type="button" data-action="resume" data-id="'+t.id+'">Retomar</button>' +
+			          '<button type="button" class="ghost" data-action="cancel" data-id="'+t.id+'">Cancelar</button>' +
+			        '</div>' +
+			      '</td>';
+
+			    if (!tr){
+			      tr = document.createElement("tr");
+			      tr.id = "row-" + t.id;
+			      tr.innerHTML = html;
+			      document.getElementById("tbody").appendChild(tr);
+			    } else {
+			      // só atualiza se mudou (reduz reflow)
+			      if (tr._lastHtml !== html){
+			        tr.innerHTML = html;
+			        tr._lastHtml = html;
+			      }
+			    }
+			  }
+
+			  function removeMissingRows(latestList){
+			    var ids = new Set(latestList.map(function(x){ return "row-" + x.id; }));
+			    var tb = document.getElementById("tbody");
+			    Array.from(tb.children).forEach(function(tr){
+			      if (!ids.has(tr.id)) tr.remove();
+			    });
+			  }
+
+			  async function loadTasks(){
+			    if (inflight) return; // evita sobreposição
+			    inflight = true;
+			    try{
+			      var list = await tryFetch(apiBase() + "/tasks");
+			      // render incremental
+			      list.forEach(function(t){
+			        cache[t.id] = t;
+			        renderRow(t);
+			      });
+			      removeMissingRows(list);
+			    }catch(e){
+			      // silencioso para não incomodar; use toast se quiser:
+			      // toast("Erro ao listar: " + e.message);
+			    } finally {
+			      inflight = false;
+			    }
+			  }
+
+			  async function viewTask(id){
+			    try{
+			      var t = await tryFetch(apiBase()+"/tasks/"+encodeURIComponent(id));
+			      var runs = (t.runs||[]).map(function(r){
+			        var s = "#" + r.n + " " + r.status;
+			        if (r.httpStatus) s += " [" + r.httpStatus + "]";
+			        if (r.title) s += " – " + r.title;
+			        if (r.finalUrl) s += " (" + r.finalUrl + ")";
+			        return s;
+			      }).join("\\n");
+			      toast("Task " + t.id + " – " + t.status);
+			      console.log("Detalhes da task:", t);
+			      console.log("Execuções:\\n" + (runs || "(sem execuções)"));
+			    }catch(e){
+			      toast("Erro ao obter task");
+			    }
+			  }
+
+			  async function act(id, action){
+			    try{
+			      await tryFetch(apiBase()+"/tasks/"+encodeURIComponent(id)+"/"+action, { method: "POST" });
+			      loadTasks();
+			    }catch(e){
+			      toast("Erro: " + action);
+			    }
+			  }
+
+			  async function createTask(){
+			    var body = {
+			      url: (document.getElementById("url").value || "").trim(),
+			      repeat: Number(document.getElementById("repeat").value || 1),
+			      intervalMs: Number(document.getElementById("interval").value || 1000),
+			      timeoutMs: Number(document.getElementById("timeout").value || 30000),
+			      userAgent: (document.getElementById("ua").value || undefined),
+			      navigationWait: (document.getElementById("wait").value || "networkidle2"),
+			      screenshot: document.getElementById("shot").checked
+			    };
+			    try{
+			      var res = await tryFetch(apiBase()+"/tasks", {
+			        method: "POST",
+			        headers: { "Content-Type": "application/json" },
+			        body: JSON.stringify(body)
+			      });
+			      toast("Criada: " + res.id);
+			      loadTasks();
+			    }catch(e){
+			      toast("Erro ao criar task");
+			    }
+			  }
+
+			  // function setAuto(on){
+			  //   if (on){
+			  //     if (autoTimer) return;
+			  //     autoTimer = setInterval(loadTasks, 1000);
+			  //     toast("Auto-refresh ligado");
+			  //   } else {
+			  //     if (autoTimer){ clearInterval(autoTimer); autoTimer = null; toast("Auto-refresh parado"); }
+			  //   }
+			  // }
+
+			  // Delegação de eventos (tabela)
+			  document.addEventListener("click", function(ev){
+			    var t = ev.target;
+			    if (!(t instanceof HTMLElement)) return;
+			    var action = t.getAttribute("data-action");
+			    var id = t.getAttribute("data-id");
+			    if (action && id){
+			      ev.preventDefault();
+			      if (action === "view") viewTask(id);
+			      else if (action === "pause") act(id, "pause");
+			      else if (action === "resume") act(id, "resume");
+			      else if (action === "cancel") act(id, "cancel");
+			    }
+			  });
+
+			  // Controles topo
+			  document.getElementById("btnHealth").addEventListener("click", function(){
+			    setText("health","testando...");
+			    tryFetch(apiBase()+"/health").then(function(j){
+			      setText("health","OK: " + JSON.stringify(j));
+			    }).catch(function(e){
+			      setText("health","Falhou: " + String(e));
+			    });
+			  });
+			  document.getElementById("btnCreate").addEventListener("click", function(){ createTask(); });
+			  document.getElementById("btnReload").addEventListener("click", function(){ loadTasks(); });
+			  document.getElementById("btnAutoOn").addEventListener("click", function(){ setAuto(true); });
+			  document.getElementById("btnAutoOff").addEventListener("click", function(){ setAuto(false); });
+
+			  // primeira carga
+			  // loadTasks();
+			})();
+		</script>
+	</body>
+</html>
